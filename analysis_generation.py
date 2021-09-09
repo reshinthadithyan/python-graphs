@@ -18,6 +18,12 @@ class DFG_Analysis:
             pgd.EdgeType.COMPUTED_FROM,
             pgd.EdgeType.RETURNS_TO
         ]
+        self.dfg_edge_english_lookup = {
+            pgd.EdgeType.LAST_READ : "last read",
+            pgd.EdgeType.LAST_WRITE: "last wrote",
+            pgd.EdgeType.COMPUTED_FROM: "computed from",
+            pgd.EdgeType.RETURNS_TO: "returns to"
+        }
         #TODO - Add Bias on Edge Type while sampling.
         self.class_sample_size = 2
     def generate_complete_dataflow_graph(self,program):
@@ -30,9 +36,7 @@ class DFG_Analysis:
         """
         program_flow_graph = program_graph.get_program_graph(program)
         data_flow_graph  =copy(program_flow_graph)
-        #Deduct self-loop edges.
         data_flow_graph.edges = [edge for edge in data_flow_graph.edges if edge.type in self.dfg_edge_lookup]
-        data_flow_graph.edges = [edge for edge in data_flow_graph.edges]
         return data_flow_graph
     def generate_edge_to_test(self, node_1 : pgd.Node, node_2 : pgd.Node, edge_type : pgd.EdgeType):
         """
@@ -63,7 +67,18 @@ class DFG_Analysis:
         true_edges = []
         for chosen_edges in graph.edges:
             identifier_1, identifier_2, edge_type = graph.nodes[chosen_edges.id1].node.id,graph.nodes[chosen_edges.id2].node.id,chosen_edges.type
-            if identifier_1 != identifier_2:
-                edge_diction = {"idt_1":identifier_1,"idt_2":identifier_2,"edge_type": edge_type}
+            if identifier_1 != identifier_2: #deduction of self-loop edges.
+                edge_diction = {"idt_1":identifier_1,"idt_2":identifier_2,"edge_type": self.dfg_edge_english_lookup[edge_type]}
                 true_edges.append(edge_diction)
         return true_edges
+
+    def __call__(self,program_string):
+        """
+        Main call function to generate data_flow_generation
+        args:
+            program_string (str) : Program String of the function to be analyzed
+        """      
+        data_flow_graph = self.generate_complete_dataflow_graph(program_string)
+        true_edges = self.sample_true_edges(data_flow_graph)
+        data_flow_analysis = {"program_string":program_string,"true_edges":true_edges}
+        return data_flow_analysis
